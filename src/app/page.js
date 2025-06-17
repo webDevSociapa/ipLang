@@ -29,81 +29,77 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-  const getInfo = async () => {
-    try {
-      const translated = new URLSearchParams(window.location.search).get("translated");
-
-      let ip = "0.0.0.0";
+    const getInfo = async () => {
       try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipRes.json();
-        ip = ipData.ip || ip;
-      } catch (ipError) {
-        console.warn("Failed to fetch IP. Using default:", ipError);
-      }
+        const translated = new URLSearchParams(window.location.search).get("translated");
 
-      let countryCode = "US";
-      try {
-        const geoRes = await fetch(`https://ipwho.is/${ip}`);
-        const geoData = await geoRes.json();
-        if (geoData.success) {
-          countryCode = geoData.country_code || "US";
+        let ip = "0.0.0.0";
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipRes.json();
+          ip = ipData.ip || ip;
+        } catch (ipError) {
+          console.warn("Failed to fetch IP. Using default:", ipError);
         }
-      } catch (geoError) {
-        console.warn("Failed to fetch Geo info. Using default:", geoError);
+
+        let countryCode = "US";
+        try {
+          const geoRes = await fetch(`https://ipwho.is/${ip}`);
+          const geoData = await geoRes.json();
+          if (geoData.success) {
+            countryCode = geoData.country_code || "US";
+          }
+        } catch (geoError) {
+          console.warn("Failed to fetch Geo info. Using default:", geoError);
+        }
+
+        const detectedLang = countryLangMap[countryCode] || "en";
+
+        // If user is not already on translated page and the lang is not English, redirect
+        if (
+          detectedLang !== 'en' &&
+          !translated &&
+          !window.location.hostname.includes('translate.goog')
+        ) {
+          const originalURL = window.location.origin + window.location.pathname + window.location.search;
+          const sep = originalURL.includes('?') ? '&' : '?';
+          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+          window.location.href = redirectURL;
+          return;
+        }
+
+        setInfo({ ip, country: countryCode, language: detectedLang });
+      } catch (error) {
+        console.error('Unexpected error during location detection:', error);
+        setInfo({ ip: "0.0.0.0", country: "US", language: "en" });
       }
+    };
 
-      const detectedLang = countryLangMap[countryCode] || "en";
+    getInfo();
+  }, []);
 
-      // Redirect if needed
-      if (
-        detectedLang !== 'en' &&
-        !translated &&
-        !window.location.hostname.includes('translate.google')
-      ) {
-        const originalURL = window.location.origin + window.location.pathname + window.location.search;
-        const sep = originalURL.includes('?') ? '&' : '?';
-        const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-        window.location.href = redirectURL;
-        return;
+  const handleLanguageChange = (e) => {
+    const selectedLang = e.target.value;
+    setManualLang(selectedLang);
+    if (!selectedLang) return;
+
+    let originalURL = window.location.href;
+
+    // If already on translated page, extract real URL from ?u= param
+    if (window.location.hostname.includes('translate.goog')) {
+      const uParam = new URLSearchParams(window.location.search).get('u');
+      if (uParam) {
+        const decoded = decodeURIComponent(uParam);
+        const urlObj = new URL(decoded);
+        originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
       }
-
-      setInfo({ ip, country: countryCode, language: detectedLang });
-    } catch (error) {
-      console.error('Unexpected error during location detection:', error);
-      setInfo({ ip: "0.0.0.0", country: "US", language: "en" });
     }
+
+    const sep = originalURL.includes('?') ? '&' : '?';
+    const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+
+    window.location.href = redirectURL;
   };
-
-  getInfo();
-}, []);
-
-
- const handleLanguageChange = (e) => {
-  const selectedLang = e.target.value;
-  setManualLang(selectedLang);
-
-  if (!selectedLang) return;
-
-  // Always redirect the original site version (not the translate.goog one)
-  let originalURL = window.location.href;
-
-  // If already translated, reconstruct original URL
-  if (window.location.hostname.includes('translate.goog')) {
-    const uParam = new URLSearchParams(window.location.search).get('u');
-    if (uParam) {
-      const decoded = decodeURIComponent(uParam);
-      const urlObj = new URL(decoded);
-      originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
-    }
-  }
-
-  const sep = originalURL.includes('?') ? '&' : '?';
-  const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-
-  window.location.href = redirectURL;
-};
-
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
