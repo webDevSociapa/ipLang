@@ -43,10 +43,11 @@ export default function HomePage() {
         const countryCode = geoData.country_code || 'US';
         const detectedLang = countryLangMap[countryCode] || 'en';
 
-        if (detectedLang !== 'en' && !translated) {
-          const currentURL = window.location.href;
-          const sep = currentURL.includes('?') ? '&' : '?';
-          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
+        // Prevent redirect loop by checking if already on Google Translate
+        if (detectedLang !== 'en' && !translated && !window.location.hostname.includes('translate.google')) {
+          const originalURL = window.location.origin + window.location.pathname + window.location.search;
+          const sep = originalURL.includes('?') ? '&' : '?';
+          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
           window.location.href = redirectURL;
           return;
         }
@@ -65,9 +66,9 @@ export default function HomePage() {
     setManualLang(selectedLang);
 
     if (selectedLang) {
-      const currentURL = window.location.href;
-      const sep = currentURL.includes('?') ? '&' : '?';
-      const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
+      const originalURL = window.location.origin + window.location.pathname + window.location.search;
+      const sep = originalURL.includes('?') ? '&' : '?';
+      const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
       window.location.href = redirectURL;
     }
   };
