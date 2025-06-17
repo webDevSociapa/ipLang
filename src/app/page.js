@@ -28,51 +28,42 @@ export default function HomePage() {
     FR: 'fr', RU: 'ru', JP: 'ja',
   };
 
+  // Safe fetch helper
+  const safeJsonFetch = async (url, fallback = {}) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn(`Fetch failed for ${url}:`, err.message);
+      return fallback;
+    }
+  };
+
   useEffect(() => {
     const getInfo = async () => {
-      try {
-        const translated = new URLSearchParams(window.location.search).get("translated");
+      const translated = new URLSearchParams(window.location.search).get("translated");
 
-        let ip = "0.0.0.0";
-        try {
-          const ipRes = await fetch('https://api.ipify.org?format=json');
-          const ipData = await ipRes.json();
-          ip = ipData.ip || ip;
-        } catch (ipError) {
-          console.warn("Failed to fetch IP. Using default:", ipError);
-        }
+      const ipData = await safeJsonFetch('https://api.ipify.org?format=json', { ip: '0.0.0.0' });
+      const ip = ipData.ip || '0.0.0.0';
 
-        let countryCode = "US";
-        try {
-          const geoRes = await fetch(`https://ipwho.is/${ip}`);
-          const geoData = await geoRes.json();
-          if (geoData.success) {
-            countryCode = geoData.country_code || "US";
-          }
-        } catch (geoError) {
-          console.warn("Failed to fetch Geo info. Using default:", geoError);
-        }
+      const geoData = await safeJsonFetch(`https://ipwho.is/${ip}`, { country_code: 'US', success: false });
+      const countryCode = geoData.country_code || 'US';
+      const detectedLang = countryLangMap[countryCode] || 'en';
 
-        const detectedLang = countryLangMap[countryCode] || "en";
-
-        // If user is not already on translated page and the lang is not English, redirect
-        if (
-          detectedLang !== 'en' &&
-          !translated &&
-          !window.location.hostname.includes('translate.goog')
-        ) {
-          const originalURL = window.location.origin + window.location.pathname + window.location.search;
-          const sep = originalURL.includes('?') ? '&' : '?';
-          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-          window.location.href = redirectURL;
-          return;
-        }
-
-        setInfo({ ip, country: countryCode, language: detectedLang });
-      } catch (error) {
-        console.error('Unexpected error during location detection:', error);
-        setInfo({ ip: "0.0.0.0", country: "US", language: "en" });
+      if (
+        detectedLang !== 'en' &&
+        !translated &&
+        !window.location.hostname.includes('translate.google')
+      ) {
+        const originalURL = window.location.origin + window.location.pathname + window.location.search;
+        const sep = originalURL.includes('?') ? '&' : '?';
+        const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+        window.location.href = redirectURL;
+        return;
       }
+
+      setInfo({ ip, country: countryCode, language: detectedLang });
     };
 
     getInfo();
@@ -81,17 +72,22 @@ export default function HomePage() {
   const handleLanguageChange = (e) => {
     const selectedLang = e.target.value;
     setManualLang(selectedLang);
+
     if (!selectedLang) return;
 
     let originalURL = window.location.href;
 
-    // If already on translated page, extract real URL from ?u= param
+    // If already inside translate.google, recover original
     if (window.location.hostname.includes('translate.goog')) {
       const uParam = new URLSearchParams(window.location.search).get('u');
       if (uParam) {
-        const decoded = decodeURIComponent(uParam);
-        const urlObj = new URL(decoded);
-        originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
+        try {
+          const decoded = decodeURIComponent(uParam);
+          const urlObj = new URL(decoded);
+          originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
+        } catch (err) {
+          console.warn('Failed to decode original URL:', err.message);
+        }
       }
     }
 
@@ -134,7 +130,7 @@ export default function HomePage() {
               appearance: 'none',
               WebkitAppearance: 'none',
               MozAppearance: 'none',
-              width: '180px'
+              width: '180px',
             }}
           >
             <option value="">Select Language</option>
