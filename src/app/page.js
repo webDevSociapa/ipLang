@@ -20,7 +20,6 @@ export default function HomePage() {
     ru: 'Russian',
   };
 
-  // Language mapping by country
   const countryLangMap = {
     SA: 'ar', EG: 'ar', AE: 'ar',
     DE: 'de', AT: 'de', CH: 'de',
@@ -41,18 +40,18 @@ export default function HomePage() {
         const geoData = await geoRes.json();
 
         const countryCode = geoData.country_code || 'US';
-        const language = countryLangMap[countryCode] || 'en';
+        const detectedLang = countryLangMap[countryCode] || 'en';
 
-        // Auto-redirect based on IP if not already translated
-        if (language !== 'en' && !translated) {
+        // Auto redirect only if not translated and language is not English
+        if (detectedLang !== 'en' && !translated) {
           const currentURL = window.location.href;
           const sep = currentURL.includes('?') ? '&' : '?';
-          const redirectURL = `https://translate.google.com/translate?hl=${language}&sl=en&tl=${language}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
+          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
           window.location.href = redirectURL;
           return;
         }
 
-        setInfo({ ip, country: countryCode, language });
+        setInfo({ ip, country: countryCode, language: detectedLang });
       } catch (error) {
         console.error('Error fetching IP or location info:', error);
       }
@@ -61,7 +60,6 @@ export default function HomePage() {
     getInfo();
   }, []);
 
-  // 🌐 Manual Language Change Handler
   const handleLanguageChange = (e) => {
     const selectedLang = e.target.value;
     setManualLang(selectedLang);
@@ -83,15 +81,15 @@ export default function HomePage() {
         <li><strong>Target Language:</strong> {info.language}</li>
       </ul>
 
-      {/* Language Dropdown */}
       <div style={{ marginTop: '20px' }}>
         <label htmlFor="language-select"><strong>Change Language:</strong> </label>
         <select
           id="language-select"
           value={manualLang}
           onChange={handleLanguageChange}
+          style={{ padding: '5px', marginLeft: '10px' }}
         >
-          <option value="">Select Language</option>
+          <option value="">-- Select Language --</option>
           {Object.entries(languageMap).map(([code, name]) => (
             <option key={code} value={code}>{name}</option>
           ))}
