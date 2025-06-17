@@ -12,6 +12,8 @@ export default function HomePage() {
   useEffect(() => {
     const getInfo = async () => {
       try {
+        const translated = new URLSearchParams(window.location.search).get("translated");
+
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const ipData = await ipRes.json();
         const ip = ipData.ip;
@@ -30,11 +32,16 @@ export default function HomePage() {
 
         const language = map[countryCode] || 'en';
 
-        setInfo({
-          ip,
-          country: countryCode,
-          language,
-        });
+        // ✅ Auto-redirect to Google Translate if not already translated
+        if (language !== 'en' && !translated) {
+          const currentURL = window.location.href;
+          const sep = currentURL.includes('?') ? '&' : '?';
+          const redirectURL = `https://translate.google.com/translate?hl=${language}&sl=en&tl=${language}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
+          window.location.href = redirectURL;
+          return;
+        }
+
+        setInfo({ ip, country: countryCode, language });
       } catch (error) {
         console.error('Error fetching IP or location info:', error);
       }
