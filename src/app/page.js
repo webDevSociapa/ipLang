@@ -32,7 +32,7 @@ export default function HomePage() {
 
         const language = map[countryCode] || 'en';
 
-        // ✅ Auto-redirect to Google Translate if not already translated
+        // Auto-redirect to Google Translate if not already translated
         if (language !== 'en' && !translated) {
           const currentURL = window.location.href;
           const sep = currentURL.includes('?') ? '&' : '?';
