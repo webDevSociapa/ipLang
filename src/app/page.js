@@ -16,10 +16,10 @@ export default function HomePage() {
         const ipData = await ipRes.json();
         const ip = ipData.ip;
 
-        const geoRes = await fetch(`https://ip-api.com/json/${ip}`); // ✅ HTTPS here
+        const geoRes = await fetch(`https://ipwho.is/${ip}`);
         const geoData = await geoRes.json();
 
-        const countryCode = geoData.countryCode || 'US';
+        const countryCode = geoData.country_code || 'US';
 
         const map = {
           SA: 'ar', EG: 'ar', AE: 'ar',
