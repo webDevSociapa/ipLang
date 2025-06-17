@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
-  const { nextUrl, headers } = request;
+  const url = request.nextUrl;
 
-  // Prevent loop if already translated
-  if (nextUrl.searchParams.has('translated')) return NextResponse.next();
+  if (url.searchParams.has('translated')) return NextResponse.next();
 
-  // Get IP from headers
+  // Step 1: Get IP
   let ip =
-    headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ||
-    request.ip ||
+    request.headers.get('x-forwarded-for')?.split(',').shift()?.trim() ||
     '';
 
-  // Fallback: Get public IP from api.ipify if local IP
-  const isPrivate = /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])/.test(ip);
-  if (!ip || isPrivate) {
+  const isPrivate = /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])/.test(ip) || !ip;
+
+  if (isPrivate) {
     try {
       const res = await fetch('https://api.ipify.org');
       ip = await res.text();
@@ -23,17 +21,16 @@ export async function middleware(request) {
     }
   }
 
-  // Get country from IP
+  // Step 2: Get country from IP
   let countryCode = 'US';
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}`);
-    const data = await res.json();
-    if (data.status === 'success') {
-      countryCode = data.countryCode;
+    const geo = await fetch(`http://ip-api.com/json/${ip}`).then(res => res.json());
+    if (geo.status === 'success') {
+      countryCode = geo.countryCode;
     }
   } catch {}
 
-  // Map country to language
+  // Step 3: Language Map
   const map = {
     SA: 'ar', EG: 'ar', AE: 'ar',
     DE: 'de', AT: 'de', CH: 'de',
@@ -42,9 +39,8 @@ export async function middleware(request) {
   };
   const lang = map[countryCode] || 'en';
 
-  // Redirect only if not English
+  // Step 4: Redirect
   if (lang !== 'en') {
-    const url = request.nextUrl.clone();
     url.searchParams.set('translated', '1');
     const redirectURL = `https://translate.google.com/translate?hl=${lang}&sl=en&tl=${lang}&u=${encodeURIComponent(url.toString())}`;
     return NextResponse.redirect(redirectURL);
@@ -54,5 +50,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/', '/about', '/products/:path*'], // Adjust paths as needed
+  matcher: ['/((?!_next|favicon.ico).*)'],
 };
