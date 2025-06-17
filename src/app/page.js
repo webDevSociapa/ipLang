@@ -18,13 +18,14 @@ export default function HomePage() {
     es: 'Spanish',
     fr: 'French',
     ru: 'Russian',
+    ja: 'Japanese',
   };
 
   const countryLangMap = {
     SA: 'ar', EG: 'ar', AE: 'ar',
     DE: 'de', AT: 'de', CH: 'de',
     ES: 'es', MX: 'es', AR: 'es',
-    FR: 'fr', RU: 'ru',
+    FR: 'fr', RU: 'ru', JP: 'ja',
   };
 
   useEffect(() => {
@@ -42,7 +43,6 @@ export default function HomePage() {
         const countryCode = geoData.country_code || 'US';
         const detectedLang = countryLangMap[countryCode] || 'en';
 
-        // Auto redirect only if not translated and language is not English
         if (detectedLang !== 'en' && !translated) {
           const currentURL = window.location.href;
           const sep = currentURL.includes('?') ? '&' : '?';
@@ -64,10 +64,12 @@ export default function HomePage() {
     const selectedLang = e.target.value;
     setManualLang(selectedLang);
 
-    const currentURL = window.location.href;
-    const sep = currentURL.includes('?') ? '&' : '?';
-    const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
-    window.location.href = redirectURL;
+    if (selectedLang) {
+      const currentURL = window.location.href;
+      const sep = currentURL.includes('?') ? '&' : '?';
+      const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(currentURL + sep + 'translated=1')}`;
+      window.location.href = redirectURL;
+    }
   };
 
   return (
@@ -81,19 +83,43 @@ export default function HomePage() {
         <li><strong>Target Language:</strong> {info.language}</li>
       </ul>
 
-      <div style={{ marginTop: '20px' }}>
-        <label htmlFor="language-select"><strong>Change Language:</strong> </label>
-        <select
-          id="language-select"
-          value={manualLang}
-          onChange={handleLanguageChange}
-          style={{ padding: '5px', marginLeft: '10px' }}
-        >
-          <option value="">-- Select Language --</option>
-          {Object.entries(languageMap).map(([code, name]) => (
-            <option key={code} value={code}>{name}</option>
-          ))}
-        </select>
+      <div style={{ marginTop: '20px', position: 'relative', display: 'inline-block' }}>
+        <label htmlFor="language-select" style={{ marginRight: '10px' }}>
+          <strong>Change Language:</strong>
+        </label>
+
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <select
+            id="language-select"
+            value={manualLang}
+            onChange={handleLanguageChange}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              backgroundColor: '#fff',
+              cursor: 'pointer',
+              fontSize: '14px',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              width: '180px'
+            }}
+          >
+            <option value="">Select Language</option>
+            {Object.entries(languageMap).map(([code, name]) => (
+              <option key={code} value={code}>{name}</option>
+            ))}
+          </select>
+          <span style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+            fontSize: '12px',
+          }}>▼</span>
+        </div>
       </div>
     </main>
   );
