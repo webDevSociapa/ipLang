@@ -28,7 +28,6 @@ export default function HomePage() {
     FR: 'fr', RU: 'ru', JP: 'ja',
   };
 
-  // Safe fetch helper
   const safeJsonFetch = async (url, fallback = {}) => {
     try {
       const res = await fetch(url);
@@ -40,10 +39,25 @@ export default function HomePage() {
     }
   };
 
+  const setCookie = (name, value, domain) => {
+    const base = `${name}=${value}; path=/;`;
+    document.cookie = base;
+    document.cookie = base + ` domain=${domain || window.location.hostname};`;
+  };
+
+  const handleLanguageChange = (e) => {
+    const selectedLang = e.target.value;
+    setManualLang(selectedLang);
+
+    if (!selectedLang) return;
+
+    setCookie('googtrans', `/en/${selectedLang}`);
+    setCookie('googtrans', `/en/${selectedLang}`, `.${window.location.hostname}`);
+    window.location.reload();
+  };
+
   useEffect(() => {
     const getInfo = async () => {
-      const translated = new URLSearchParams(window.location.search).get("translated");
-
       const ipData = await safeJsonFetch('https://api.ipify.org?format=json', { ip: '0.0.0.0' });
       const ip = ipData.ip || '0.0.0.0';
 
@@ -51,15 +65,12 @@ export default function HomePage() {
       const countryCode = geoData.country_code || 'US';
       const detectedLang = countryLangMap[countryCode] || 'en';
 
-      if (
-        detectedLang !== 'en' &&
-        !translated &&
-        !window.location.hostname.includes('translate.google')
-      ) {
-        const originalURL = window.location.origin + window.location.pathname + window.location.search;
-        const sep = originalURL.includes('?') ? '&' : '?';
-        const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-        window.location.href = redirectURL;
+      // If not already translated and not English, set cookie and reload
+      const currentCookie = document.cookie.includes('googtrans');
+      if (!currentCookie && detectedLang !== 'en') {
+        setCookie('googtrans', `/en/${detectedLang}`);
+        setCookie('googtrans', `/en/${detectedLang}`, `.${window.location.hostname}`);
+        window.location.reload();
         return;
       }
 
@@ -69,31 +80,27 @@ export default function HomePage() {
     getInfo();
   }, []);
 
-  const handleLanguageChange = (e) => {
-  const selectedLang = e.target.value;
-  setManualLang(selectedLang);
+  useEffect(() => {
+    const addTranslateScript = () => {
+      const script = document.createElement('script');
+      script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+      document.body.appendChild(script);
 
-  if (!selectedLang) return;
+      window.googleTranslateElementInit = () => {
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            includedLanguages: Object.keys(languageMap).join(','),
+            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false,
+          },
+          'google_translate_element'
+        );
+      };
+    };
 
-  let originalURL = window.location.href;
-
-  // If already translated, extract the original URL from query param "u"
-  if (window.location.hostname.includes("translate.goog")) {
-    const uParam = new URLSearchParams(window.location.search).get("u");
-    if (uParam) {
-      try {
-        originalURL = decodeURIComponent(uParam);
-      } catch (err) {
-        console.warn("URL decode failed:", err.message);
-      }
-    }
-  }
-
-  const sep = originalURL.includes("?") ? "&" : "?";
-  const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + "translated=1")}`;
-  window.location.href = redirectURL;
-};
-
+    addTranslateScript();
+  }, []);
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
@@ -149,6 +156,8 @@ export default function HomePage() {
           }}>▼</span>
         </div>
       </div>
+
+      <div id="google_translate_element" style={{ display: 'none' }}></div>
     </main>
   );
 }
