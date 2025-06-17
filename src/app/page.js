@@ -43,6 +43,7 @@ export default function HomePage() {
         const countryCode = geoData.country_code || 'US';
         const detectedLang = countryLangMap[countryCode] || 'en';
 
+        // Prevent redirect loop by checking if already on Google Translate
         if (detectedLang !== 'en' && !translated && !window.location.hostname.includes('translate.google')) {
           const originalURL = window.location.origin + window.location.pathname + window.location.search;
           const sep = originalURL.includes('?') ? '&' : '?';
@@ -93,8 +94,6 @@ export default function HomePage() {
             id="language-select"
             value={manualLang}
             onChange={handleLanguageChange}
-            className="notranslate"
-            translate="no"
             style={{
               padding: '8px 12px',
               border: '1px solid #ccc',
@@ -110,12 +109,9 @@ export default function HomePage() {
           >
             <option value="">Select Language</option>
             {Object.entries(languageMap).map(([code, name]) => (
-              <option key={code} value={code} className="notranslate" translate="no">
-                {name}
-              </option>
+              <option key={code} value={code}>{name}</option>
             ))}
           </select>
-
           <span style={{
             position: 'absolute',
             right: '12px',
