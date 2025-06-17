@@ -29,36 +29,55 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const getInfo = async () => {
-      try {
-        const translated = new URLSearchParams(window.location.search).get("translated");
+  const getInfo = async () => {
+    try {
+      const translated = new URLSearchParams(window.location.search).get("translated");
 
+      let ip = "0.0.0.0";
+      try {
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const ipData = await ipRes.json();
-        const ip = ipData.ip;
+        ip = ipData.ip || ip;
+      } catch (ipError) {
+        console.warn("Failed to fetch IP. Using default:", ipError);
+      }
 
+      let countryCode = "US";
+      try {
         const geoRes = await fetch(`https://ipwho.is/${ip}`);
         const geoData = await geoRes.json();
-
-        const countryCode = geoData.country_code || 'US';
-        const detectedLang = countryLangMap[countryCode] || 'en';
-
-        if (detectedLang !== 'en' && !translated && !window.location.hostname.includes('translate.google')) {
-          const originalURL = window.location.origin + window.location.pathname + window.location.search;
-          const sep = originalURL.includes('?') ? '&' : '?';
-          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-          window.location.href = redirectURL;
-          return;
+        if (geoData.success) {
+          countryCode = geoData.country_code || "US";
         }
-
-        setInfo({ ip, country: countryCode, language: detectedLang });
-      } catch (error) {
-        console.error('Error fetching IP or location info:', error);
+      } catch (geoError) {
+        console.warn("Failed to fetch Geo info. Using default:", geoError);
       }
-    };
 
-    getInfo();
-  }, []);
+      const detectedLang = countryLangMap[countryCode] || "en";
+
+      // Redirect if needed
+      if (
+        detectedLang !== 'en' &&
+        !translated &&
+        !window.location.hostname.includes('translate.google')
+      ) {
+        const originalURL = window.location.origin + window.location.pathname + window.location.search;
+        const sep = originalURL.includes('?') ? '&' : '?';
+        const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+        window.location.href = redirectURL;
+        return;
+      }
+
+      setInfo({ ip, country: countryCode, language: detectedLang });
+    } catch (error) {
+      console.error('Unexpected error during location detection:', error);
+      setInfo({ ip: "0.0.0.0", country: "US", language: "en" });
+    }
+  };
+
+  getInfo();
+}, []);
+
 
  const handleLanguageChange = (e) => {
   const selectedLang = e.target.value;
