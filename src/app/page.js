@@ -60,17 +60,31 @@ export default function HomePage() {
     getInfo();
   }, []);
 
-  const handleLanguageChange = (e) => {
-    const selectedLang = e.target.value;
-    setManualLang(selectedLang);
+ const handleLanguageChange = (e) => {
+  const selectedLang = e.target.value;
+  setManualLang(selectedLang);
 
-    if (selectedLang) {
-      const originalURL = window.location.origin + window.location.pathname + window.location.search;
-      const sep = originalURL.includes('?') ? '&' : '?';
-      const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
-      window.location.href = redirectURL;
+  if (!selectedLang) return;
+
+  // Always redirect the original site version (not the translate.goog one)
+  let originalURL = window.location.href;
+
+  // If already translated, reconstruct original URL
+  if (window.location.hostname.includes('translate.goog')) {
+    const uParam = new URLSearchParams(window.location.search).get('u');
+    if (uParam) {
+      const decoded = decodeURIComponent(uParam);
+      const urlObj = new URL(decoded);
+      originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
     }
-  };
+  }
+
+  const sep = originalURL.includes('?') ? '&' : '?';
+  const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+
+  window.location.href = redirectURL;
+};
+
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
