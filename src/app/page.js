@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  const [info, setInfo] = useState({ ip: '', country: '', language: 'en' });
+  const [info, setInfo] = useState({
+    ip: '',
+    country: '',
+    language: '',
+  });
+
   const [manualLang, setManualLang] = useState('');
 
   const languageMap = {
@@ -16,42 +21,6 @@ export default function HomePage() {
     ja: 'Japanese',
   };
 
-  const translations = {
-    en: {
-      welcome: 'Welcome to our website',
-      desc: 'This page automatically translates based on your IP address.',
-      ip: 'IPv4 Address',
-      country: 'Detected Country',
-      lang: 'Target Language',
-      changeLang: 'Change Language',
-    },
-    es: {
-      welcome: 'Bienvenido a nuestro sitio web',
-      desc: 'Esta página se traduce automáticamente según su dirección IP.',
-      ip: 'Dirección IPv4',
-      country: 'País detectado',
-      lang: 'Idioma objetivo',
-      changeLang: 'Cambiar idioma',
-    },
-    fr: {
-      welcome: 'Bienvenue sur notre site Web',
-      desc: 'Cette page se traduit automatiquement en fonction de votre adresse IP.',
-      ip: 'Adresse IPv4',
-      country: 'Pays détecté',
-      lang: 'Langue cible',
-      changeLang: 'Changer de langue',
-    },
-    ar: {
-      welcome: 'مرحبًا بك في موقعنا',
-      desc: 'يتم ترجمة هذه الصفحة تلقائيًا بناءً على عنوان IP الخاص بك.',
-      ip: 'عنوان IPv4',
-      country: 'الدولة المكتشفة',
-      lang: 'اللغة المستهدفة',
-      changeLang: 'تغيير اللغة',
-    },
-    // Add more as needed...
-  };
-
   const countryLangMap = {
     SA: 'ar', EG: 'ar', AE: 'ar',
     DE: 'de', AT: 'de', CH: 'de',
@@ -62,6 +31,8 @@ export default function HomePage() {
   useEffect(() => {
     const getInfo = async () => {
       try {
+        const translated = new URLSearchParams(window.location.search).get("translated");
+
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const ipData = await ipRes.json();
         const ip = ipData.ip;
@@ -72,8 +43,15 @@ export default function HomePage() {
         const countryCode = geoData.country_code || 'US';
         const detectedLang = countryLangMap[countryCode] || 'en';
 
+        if (detectedLang !== 'en' && !translated && !window.location.hostname.includes('translate.google')) {
+          const originalURL = window.location.origin + window.location.pathname + window.location.search;
+          const sep = originalURL.includes('?') ? '&' : '?';
+          const redirectURL = `https://translate.google.com/translate?hl=${detectedLang}&sl=en&tl=${detectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+          window.location.href = redirectURL;
+          return;
+        }
+
         setInfo({ ip, country: countryCode, language: detectedLang });
-        setManualLang(detectedLang);
       } catch (error) {
         console.error('Error fetching IP or location info:', error);
       }
@@ -82,30 +60,41 @@ export default function HomePage() {
     getInfo();
   }, []);
 
-  const selectedLang = manualLang || info.language;
-  const t = translations[selectedLang] || translations.en;
+  const handleLanguageChange = (e) => {
+    const selectedLang = e.target.value;
+    setManualLang(selectedLang);
+
+    if (selectedLang) {
+      const originalURL = window.location.origin + window.location.pathname + window.location.search;
+      const sep = originalURL.includes('?') ? '&' : '?';
+      const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+      window.location.href = redirectURL;
+    }
+  };
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
-      <h1>{t.welcome}</h1>
-      <p>{t.desc}</p>
+      <h1>Welcome to our website</h1>
+      <p>This page automatically translates based on your IP address.</p>
 
       <ul>
-        <li><strong>{t.ip}:</strong> {info.ip}</li>
-        <li><strong>{t.country}:</strong> {info.country}</li>
-        <li><strong>{t.lang}:</strong> {selectedLang}</li>
+        <li><strong>IPv4 Address:</strong> {info.ip}</li>
+        <li><strong>Detected Country:</strong> {info.country}</li>
+        <li><strong>Target Language:</strong> {info.language}</li>
       </ul>
 
       <div style={{ marginTop: '20px', position: 'relative', display: 'inline-block' }}>
         <label htmlFor="language-select" style={{ marginRight: '10px' }}>
-          <strong>{t.changeLang}:</strong>
+          <strong>Change Language:</strong>
         </label>
 
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <select
             id="language-select"
             value={manualLang}
-            onChange={(e) => setManualLang(e.target.value)}
+            onChange={handleLanguageChange}
+            className="notranslate"
+            translate="no"
             style={{
               padding: '8px 12px',
               border: '1px solid #ccc',
@@ -119,10 +108,14 @@ export default function HomePage() {
               width: '180px'
             }}
           >
+            <option value="">Select Language</option>
             {Object.entries(languageMap).map(([code, name]) => (
-              <option key={code} value={code}>{name}</option>
+              <option key={code} value={code} className="notranslate" translate="no">
+                {name}
+              </option>
             ))}
           </select>
+
           <span style={{
             position: 'absolute',
             right: '12px',
