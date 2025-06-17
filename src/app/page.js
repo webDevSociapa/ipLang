@@ -70,32 +70,30 @@ export default function HomePage() {
   }, []);
 
   const handleLanguageChange = (e) => {
-    const selectedLang = e.target.value;
-    setManualLang(selectedLang);
+  const selectedLang = e.target.value;
+  setManualLang(selectedLang);
 
-    if (!selectedLang) return;
+  if (!selectedLang) return;
 
-    let originalURL = window.location.href;
+  let originalURL = window.location.href;
 
-    // If already inside translate.google, recover original
-    if (window.location.hostname.includes('translate.goog')) {
-      const uParam = new URLSearchParams(window.location.search).get('u');
-      if (uParam) {
-        try {
-          const decoded = decodeURIComponent(uParam);
-          const urlObj = new URL(decoded);
-          originalURL = urlObj.origin + urlObj.pathname + urlObj.search;
-        } catch (err) {
-          console.warn('Failed to decode original URL:', err.message);
-        }
+  // If already translated, extract the original URL from query param "u"
+  if (window.location.hostname.includes("translate.goog")) {
+    const uParam = new URLSearchParams(window.location.search).get("u");
+    if (uParam) {
+      try {
+        originalURL = decodeURIComponent(uParam);
+      } catch (err) {
+        console.warn("URL decode failed:", err.message);
       }
     }
+  }
 
-    const sep = originalURL.includes('?') ? '&' : '?';
-    const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + 'translated=1')}`;
+  const sep = originalURL.includes("?") ? "&" : "?";
+  const redirectURL = `https://translate.google.com/translate?hl=${selectedLang}&sl=en&tl=${selectedLang}&u=${encodeURIComponent(originalURL + sep + "translated=1")}`;
+  window.location.href = redirectURL;
+};
 
-    window.location.href = redirectURL;
-  };
 
   return (
     <main style={{ padding: '2rem', fontFamily: 'Arial' }}>
